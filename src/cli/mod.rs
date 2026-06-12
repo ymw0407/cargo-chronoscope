@@ -4,6 +4,8 @@
 
 pub mod json;
 
+use std::io::{self, IsTerminal, Write};
+
 use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::model::{Build, BuildDiff, BuildId, CrateChange, DurationChange};
@@ -74,17 +76,23 @@ pub enum Command {
 ///
 /// Displays a simple table with build ID, timestamp, profile, duration, and status.
 pub fn render_ls(builds: &[Build]) {
+    let color = colorize_ls_statuses();
+    let mut stdout = io::stdout();
+    render_ls_to(&mut stdout, builds, color).expect("failed to write ls output");
+}
+
+fn render_ls_to(out: &mut impl Write, builds: &[Build], color: bool) -> io::Result<()> {
     if builds.is_empty() {
-        println!("No builds recorded yet.");
-        return;
+        writeln!(out, "No builds recorded yet.")?;
+        return Ok(());
     }
 
     let header = format!(
         "{:<6} {:<20} {:<8} {:<10} {}",
         "ID", "Started", "Profile", "Duration", "Status"
     );
-    println!("{header}");
-    println!("{}", "-".repeat(60));
+    writeln!(out, "{header}")?;
+    writeln!(out, "{}", "-".repeat(60))?;
 
     for build in builds {
         let duration_str = match build.total_duration {
@@ -94,17 +102,38 @@ pub fn render_ls(builds: &[Build]) {
         let status = match build.success {
             Some(true) => "ok",
             Some(false) => "FAIL",
-            None => "???",
+            None => "running",
         };
-        println!(
+        writeln!(
+            out,
             "{:<6} {:<20} {:<8} {:<10} {}",
             BuildId(build.id.0),
             &build.started_at[..std::cmp::min(19, build.started_at.len())],
             build.profile,
             duration_str,
-            status,
-        );
+            color_status(status, color),
+        )?;
     }
+
+    Ok(())
+}
+
+fn colorize_ls_statuses() -> bool {
+    std::env::var_os("NO_COLOR").is_none() && io::stdout().is_terminal()
+}
+
+fn color_status(status: &str, color: bool) -> String {
+    if !color {
+        return status.to_string();
+    }
+
+    let code = match status {
+        "ok" => "32",
+        "FAIL" => "31",
+        "running" => "33",
+        _ => return status.to_string(),
+    };
+    format!("\x1b[{code}m{status}\x1b[0m")
 }
 
 /// Render a build diff to stdout.
@@ -422,7 +451,8 @@ mod tests {
 
     #[test]
     fn render_ls_empty_does_not_panic() {
-        render_ls(&[]);
+        let mut out = Vec::new();
+        render_ls_to(&mut out, &[], false).unwrap();
     }
 
     #[test]
@@ -437,7 +467,61 @@ mod tests {
             success: Some(true),
             total_duration: Some(Duration::from_millis(5000)),
         }];
-        render_ls(&builds);
+        let mut out = Vec::new();
+        render_ls_to(&mut out, &builds, false).unwrap();
+    }
+
+    #[test]
+    fn render_ls_no_color_has_plain_statuses() {
+        let builds = vec![
+            Build {
+                id: BuildId(1),
+                started_at: "2025-04-19T12:00:00Z".to_string(),
+                finished_at: Some("2025-04-19T12:00:05Z".to_string()),
+                commit_hash: Some("abc123".to_string()),
+                cargo_args: "[\"build\"]".to_string(),
+                profile: "dev".to_string(),
+                success: Some(true),
+                total_duration: Some(Duration::from_millis(5000)),
+            },
+            Build {
+                id: BuildId(2),
+                started_at: "2025-04-19T12:01:00Z".to_string(),
+                finished_at: Some("2025-04-19T12:01:05Z".to_string()),
+                commit_hash: Some("def456".to_string()),
+                cargo_args: "[\"build\"]".to_string(),
+                profile: "dev".to_string(),
+                success: Some(false),
+                total_duration: Some(Duration::from_millis(5000)),
+            },
+            Build {
+                id: BuildId(3),
+                started_at: "2025-04-19T12:02:00Z".to_string(),
+                finished_at: None,
+                commit_hash: Some("fedcba".to_string()),
+                cargo_args: "[\"build\"]".to_string(),
+                profile: "dev".to_string(),
+                success: None,
+                total_duration: None,
+            },
+        ];
+        let mut out = Vec::new();
+
+        render_ls_to(&mut out, &builds, false).unwrap();
+
+        let rendered = String::from_utf8(out).unwrap();
+        assert!(!rendered.contains("\x1b["));
+        assert!(rendered.contains("ok"));
+        assert!(rendered.contains("FAIL"));
+        assert!(rendered.contains("running"));
+    }
+
+    #[test]
+    fn color_status_applies_expected_ansi_codes() {
+        assert_eq!(color_status("ok", true), "\x1b[32mok\x1b[0m");
+        assert_eq!(color_status("FAIL", true), "\x1b[31mFAIL\x1b[0m");
+        assert_eq!(color_status("running", true), "\x1b[33mrunning\x1b[0m");
+        assert_eq!(color_status("???", true), "???");
     }
 
     #[test]

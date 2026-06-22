@@ -217,7 +217,7 @@ runs:
 
     - name: Upload perf artifact
       if: inputs.upload-artifact == 'true' && github.event_name == 'pull_request'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: perf-report
         path: perf-artifact/

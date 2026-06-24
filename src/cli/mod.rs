@@ -5,6 +5,7 @@
 pub mod json;
 
 use clap::{Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 
 use crate::model::{Build, BuildDiff, BuildId, CrateChange, DurationChange};
 
@@ -67,6 +68,13 @@ pub enum Command {
         /// Output format.
         #[arg(long, value_enum, default_value_t = Format::Text)]
         format: Format,
+    },
+
+    /// Generate a shell completion script.
+    Completions {
+        /// Shell to generate completions for.
+        #[arg(value_enum)]
+        shell: Shell,
     },
 }
 

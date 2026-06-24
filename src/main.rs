@@ -16,7 +16,7 @@ mod tui;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use tokio_util::sync::CancellationToken;
 
 use crate::cli::{Cli, Command};
@@ -42,6 +42,12 @@ async fn main() -> anyhow::Result<()> {
         cancel_clone.cancel();
     });
 
+    if let Command::Completions { shell } = cli.command {
+        let mut cmd = Cli::command();
+        clap_complete::generate(shell, &mut cmd, "cargo-chronoscope", &mut std::io::stdout());
+        return Ok(());
+    }
+
     // Determine workspace directory and DB path.
     let workspace_dir = std::env::current_dir()?;
     let db_dir = workspace_dir.join(DB_DIR);
@@ -65,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
         } => {
             cmd_diff(&db_path, before, after, format).await?;
         }
+        Command::Completions { .. } => unreachable!("handled before database setup"),
     }
 
     Ok(())

@@ -49,6 +49,18 @@ cargo install cargo-chronoscope
 
 This puts `cargo-chronoscope` on your `PATH` (typically `~/.cargo/bin`).
 
+### Shell completions
+
+Generate completion scripts with the `completions` subcommand:
+
+```bash
+cargo-chronoscope completions bash > ~/.local/share/bash-completion/completions/cargo-chronoscope
+cargo-chronoscope completions zsh > "${fpath[1]}/_cargo-chronoscope"
+cargo-chronoscope completions fish > ~/.config/fish/completions/cargo-chronoscope.fish
+cargo-chronoscope completions powershell > cargo-chronoscope.ps1
+cargo-chronoscope completions elvish > ~/.elvish/lib/cargo-chronoscope.elv
+```
+
 ### From source
 
 ```bash

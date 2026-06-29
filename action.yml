@@ -99,7 +99,7 @@ runs:
   using: 'composite'
   steps:
     - name: Restore chronoscope history
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: .cargo-chronoscope/history.db
         key: ${{ inputs.cache-key-prefix }}-${{ github.sha }}
@@ -217,7 +217,7 @@ runs:
 
     - name: Upload perf artifact
       if: inputs.upload-artifact == 'true' && github.event_name == 'pull_request'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: perf-report
         path: perf-artifact/
@@ -226,7 +226,7 @@ runs:
 
     - name: Save chronoscope history
       if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.baseline-ref)
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@v6
       with:
         path: .cargo-chronoscope/history.db
         key: ${{ inputs.cache-key-prefix }}-${{ github.sha }}

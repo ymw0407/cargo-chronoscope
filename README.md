@@ -19,6 +19,8 @@ analyses historical trends.
 
 ![cargo-chronoscope demo: live watch dashboard, ls, diff against ripgrep](docs/assets/watch-demo.gif)
 
+The recording recipe for this GIF lives in [`docs/assets/README.md`](docs/assets/README.md).
+
 ## Features
 
 | Command | What it does |
